@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic; // スタックを扱うために必要
 using System.ComponentModel;
 using System.Data;
@@ -19,36 +20,30 @@ namespace _240810_calc
         // 変数宣言
         string input = "";  // 入力された数式そのまま
         int bracket_depth = 0;  // 括弧が閉じられているか否か　閉じていればtrue
-        int period_phase = 0;  // 小数点を入力できるかの判定（最後の文字はまだ見ない大前提の条件として）
-                               // 　0→可能「3」
-                               // 　1→小数点記号が入力され、小数点以下が一つ以上入力されるのを待っている状況「3.」
-                               // 　2→小数点以下が1つ以上入力され、数値と小数点以下以外 が入力されるのを待つ状況「3.2」「3.24」
-        string[] symbol_typeA = { "+", "-", "x", "/", ".", "(" };  // 分類Aの直前に存在してはいけない文字
-        string[] symbol_typeMinus = { "+", "-", "x", "/", "." };  // マイナス記号
-        string[] symbol_typeB = { "+", "-", "x", "/", ".", "(", ")" };  // ピリオド
-        string[] symbol_typeC = { "." };  // 括弧開き記号
-        string[] symbol_typeD = { "+", "-", "x", "/", ".", "(" };  // 括弧閉じ記号
+        int period_phase = 0;   // 小数点を入力できるかの判定（最後の文字はまだ見ない大前提の条件として）
+                                // 　0→可能「3」
+                                // 　1→小数点記号が入力され、小数点以下が一つ以上入力されるのを待っている状況「3.」
+                                // 　2→小数点以下が1つ以上入力され、数値と小数点以下以外 が入力されるのを待つ状況「3.2」「3.24」
+        // 分類〇の直前に存在してはいけない文字（禁止文字）
+        string[] symbol_typeA = { "+", "-", "x", "/", ".", "(" };       // 分類A「 + - * / 」
+        string[] symbol_typeMinus = { "+", "-", "x", "/", "." };        // 分類Aの中のマイナス記号
+        string[] symbol_typeB = { "+", "-", "x", "/", ".", "(", ")" };  // 分類B「 . 」
+        string[] symbol_typeC = { "." };                                // 分類C「 ( 」
+        string[] symbol_typeD = { "+", "-", "x", "/", ".", "(" };       // 分類D「 ) 」
 
-        // input → input_list → input_word に変換する関数で、文字種類の判定に使う
+        // input → input_list → input_word に変換する関数（ConvertToInputWord()関数）で、文字種類の判定に使う
         string[] group_num = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
         string[] group_cal = { "+", "-", "x", "/" };
-        string[] input_word = new string[] { };  // 入力計算式を、数値と記号に区切って、配列にしたもの
+
+        // 計算式を格納する諸変数
+        string[] input_word = new string[] { };  // 入力文字列を数値と記号毎に、配列に分解したもの
         string[] input_wordx = new string[] { }; // ↑で省略されていたx記号を補ったもの
         string[] rev_poland = new string[] { }; // ↑を並べ替え、逆ポーランド記法にしたもの
         float answer; // 計算結果Calcrate()の結果をこれに入れる
 
-        string[] poland = new string[] { };     // inputを逆ポーランド記法に直したもの
-
-
-
-
-
-
-
-
-
-
-
+        /// <summary>
+        /// アプリが開かれたとき、コンポーネントの初期化、画面サイズの指定等を行う
+        /// </summary>
         public Form1()
         {
             InitializeComponent();
@@ -56,28 +51,42 @@ namespace _240810_calc
             this.FormBorderStyle = FormBorderStyle.FixedSingle; // サイズ変更不可にする
         }
 
+        // これ必要
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        // ------------------------------------------------------------------------------------------
+        // ↑ アプリ全体の初期化処理
+        // ↓ クリックイベントの処理
+        // ------------------------------------------------------------------------------------------
+
         private void label1_Click(object sender, EventArgs e)
         {
 
         }
 
-        // 計算開始ボタンが押されたときの処理
+        /// <summary>
+        /// 「計算」ボタンが押されたとき、入力文字列の変換・計算の各関数を順に呼び出す
+        /// </summary>
+        /// <param name="sender">ボタンオブジェクト</param>
+        /// <param name="e">イベントの情報のインスタンス</param>
         private void action_Click(object sender, EventArgs e)
         {
-            //this.label01.Text = "ボタンがクリックされた";
             this.input_word   = ConvertToInputWord(input); // input → input_list → input_word
             string word_txt = "";
-            foreach (string wt in input_word) { word_txt += wt + "_"; }
+            foreach (string wt in input_word) { word_txt += wt + " "; }
             this.word_display.Text = "input_word: " + word_txt;
 
             this.input_wordx  = ConvertToInputWordx(input_word); // input_word → input_wordx
             string input_wordx_txt = "";
-            foreach (string iwt in input_wordx) { input_wordx_txt += iwt + "_"; }
+            foreach (string iwt in input_wordx) { input_wordx_txt += iwt + " "; }
             this.wordx_display.Text = "input_wordx: " + input_wordx_txt;
 
             this.rev_poland = ConvertToRevPoland(input_wordx); // input_wordx → rev_poland
             string rev_po_txt = "";
-            foreach (string rp in rev_poland){rev_po_txt += rp + "_"; }
+            foreach (string rp in rev_poland){rev_po_txt += rp + " "; }
             this.poland_display.Text = "rev_poland: " + rev_po_txt;
             
             this.answer = Calculate(rev_poland);
@@ -85,13 +94,11 @@ namespace _240810_calc
             this.answer_display.Text = answer.ToString();
         }
 
-        // これ必要
-        private void Form1_Load(object sender, EventArgs e)
-        {
-            
-        }
-
-        // 数字が押されたとき
+        /// <summary>
+        /// 「0~9」ボタンが押されたとき、表示を更新する。小数点の状態により処理を分岐
+        /// </summary>
+        /// <param name="sender">ボタンオブジェクト</param>
+        /// <param name="e">イベントの情報のインスタンス</param>
         private void btNumber_Click(object sender, EventArgs e)
         {
             input += ((Button)sender).Text;
@@ -103,7 +110,11 @@ namespace _240810_calc
             this.label01.Text = input;
         }
 
-        // 記号が押されたとき
+        /// <summary>
+        /// 分類Aの記号「 + - * / 」ボタンが押されたときの処理。この中で「 - 」記号のみ特殊な処理を行う
+        /// </summary>
+        /// <param name="sender">ボタンオブジェクト</param>
+        /// <param name="e">イベントの情報のインスタンス</param>
         private void btSymbol_typeA_Click(object sender, EventArgs e) // 分類 A 
         {
             if(input.Length != 0) // 入力文字が空出ない必要があり、
@@ -125,11 +136,11 @@ namespace _240810_calc
                             input += "/";
                             if (period_phase == 2) period_phase = 0; // 小数点状態リセット
                             break;
-
+                        // マイナス記号の処理は書かない
                     }
                 }
                 // マイナス記号の時だけ特別
-                if ((!symbol_typeMinus.Any(c => c == lastChar)))
+                if ((!symbol_typeMinus.Any(c => c == lastChar))) // マイナスの直前の禁止文字
                 { // 最後の入力文字が、禁止文字ではないとき　入力実行
                     switch (((Button)sender).Text)
                     {
@@ -154,6 +165,11 @@ namespace _240810_calc
             this.label01.Text = input; // 最後に画面表示を更新
         }
 
+        /// <summary>
+        /// 分類Bの記号「 . 」ボタンが押されたときの処理。
+        /// </summary>
+        /// <param name="sender">ボタンオブジェクト</param>
+        /// <param name="e">イベントの情報のインスタンス</param>
         private void btSymbol_typeB_Click(object sender, EventArgs e)
         {
             if (input.Length != 0) // 入力文字が空でない必要があり、
@@ -171,6 +187,12 @@ namespace _240810_calc
             }
             this.label01.Text = input; // 最後に画面表示を更新
         }
+
+        /// <summary>
+        /// 分類Cの記号「 ( 」ボタンが押されたときの処理。
+        /// </summary>
+        /// <param name="sender">ボタンオブジェクト</param>
+        /// <param name="e">イベントの情報のインスタンス</param>
         private void btSymbol_typeC_Click(object sender, EventArgs e)
         {
             if (input.Length == 0) // 入力文字が空のとき 無条件で入力実行
@@ -195,6 +217,11 @@ namespace _240810_calc
             this.label01.Text = input; // 最後に画面表示を更新
         }
 
+        /// <summary>
+        /// 分類Dの記号「 ) 」ボタンが押されたときの処理。
+        /// </summary>
+        /// <param name="sender">ボタンオブジェクト</param>
+        /// <param name="e">イベントの情報のインスタンス</param>
         private void btSymbol_typeD_Click(object sender, EventArgs e)
         {
             if (input.Length != 0) // 入力文字が空のとき 無条件で入力実行
@@ -214,19 +241,70 @@ namespace _240810_calc
             this.label01.Text = input; // 最後に画面表示を更新
         }
 
-        // input → input_list → input_word　に変換する
+        /// <summary>
+        /// 「C」ボタン（全削除）が押されたときの処理
+        /// </summary>
+        /// <param name="sender">ボタンオブジェクト</param>
+        /// <param name="e">イベントの情報のインスタンス</param>
+        private void bt_clear_Click(object sender, EventArgs e)
+        {
+            input = "";
+            bracket_depth = 0; // 括弧の深さリセット
+            period_phase = 0;  // 小数点状態リセット
+            this.bracket_depth_display.Text = bracket_depth.ToString();
+            this.label01.Text = input;
+        }
+
+        /// <summary>
+        /// 「<x」ボタン（1文字削除）が押されたときの処理
+        /// </summary>
+        /// <param name="sender">ボタンオブジェクト</param>
+        /// <param name="e">イベントの情報のインスタンス</param>
+        private void bt_delete_Click(object sender, EventArgs e)
+        {
+            if (input.Length != 0)
+            {
+                string deleteTarget = input.Last().ToString();
+                if (deleteTarget == ")")
+                {
+                    bracket_depth++;
+                    this.bracket_depth_display.Text = bracket_depth.ToString();
+                }
+                else if (deleteTarget == "(")
+                {
+                    bracket_depth--;
+                    this.bracket_depth_display.Text = bracket_depth.ToString();
+                }
+                input = input.Substring(0, input.Length - 1);
+                this.label01.Text = input;
+            }
+        }
+
+
+        // ------------------------------------------------------------------------------------------
+        // ↑ クリックイベントの処理
+        // ↓ 変換・計算の処理
+        // ------------------------------------------------------------------------------------------
+
+
+        /// <summary>
+        /// 入力文字列「input」を負の値・演算子・小数を考慮し、単語毎の配列「input_word」に変換して返す
+        /// 変換の流れ: input → input_list → input_word
+        /// </summary>
+        /// <param name="input">入力文字列</param>
+        /// <returns name="word">単語毎の配列</returns>
         private string[] ConvertToInputWord(string input)
         {
             // 
             Console.WriteLine("入力された文字列 input: " + input);
             // 文字列を配列に変換
             char[] input_list = input.ToCharArray(); // 入力文字列を配列に分解する（1文字ずつ）input → input_list
-            string mem_num = ""; // 数値が連続で続いたときにここに保存
-            string pre_type = ""; // 一つ前の文字の種類（number, dot, calc, bracket_open, bracket_close)
-            string[] word = new string[] { }; // 戻り値
-            // 最後が括弧閉じだった時、mem_numを追加しないようにするフラグ
-            bool isFinishBracketClose = false;
+            string mem_num = "";    // 数値が連続で続いたときにここに保存
+            string pre_type = "";   // 一つ前の文字の種類（number, dot, calc, bracket_open, bracket_close)
+            string[] word = new string[] { };  // 戻り値
+            bool isFinishBracketClose = false; // 最後が括弧閉じだった時、mem_numを追加しないようにするフラグ
 
+            // 入力文字列の長さだけループ
             for (int i = 0; i < input_list.Length; i++)
             {
                 isFinishBracketClose = false; // 毎回for文内先頭で初期化
@@ -236,9 +314,10 @@ namespace _240810_calc
                 Console.WriteLine("pre_type: " + pre_type);
                 Console.WriteLine("mem_num : " + mem_num);
 
-                // まず今回の文字の種類を判別（前回の種類pre_typeとの組み合わせで合計12通りの場合分けになる
+                // 先に"今回"、続いて"前回"の順に場合分けを行い処理を分岐
                 // 今回 calc
                 /**
+                 * ↓マイナス記号のときの場合分けのメモ
                  * 数値→演算子（マイナス記号）　　　　→→　マイナス記号は演算子　→→　mem_numを初期化して演算子をwordに追加
                  * 数値→演算子（マイナス記号以外）　　→→　　　　　記号は演算子　→→　mem_numを初期化して演算子をwordに追加
                  * 括弧閉じ→演算子（マイナス記号）　　→→　マイナス記号は演算子　→→　mem_numを初期化して演算子をwordに追加
@@ -302,7 +381,7 @@ namespace _240810_calc
                     pre_type = "calc"; // 前回の文字種を更新
                 }
 
-                // 今回 bracket
+                // 今回 bracket（bracket_open, bracket_close）
                 if (input_list[i].ToString() == "(" || input_list[i].ToString() == ")")
                 {
                     // 前回を確認（number, calc, bracket, 空 →bracket　の4択のうちnumber→bracketのときのみ追加で処理がある）
@@ -357,8 +436,7 @@ namespace _240810_calc
             }
 
             // 最後が数値で終わった時、mem_numの中に存在したまま、wordの方には追加されないので、ここで追加する
-            // ↓ここで、数値以外の文字（つまり括弧閉じ）で終わった時、空文字が追加されてしまう。
-            // 配列に要素を追加するテンプレ
+            // ↓ここで、数値以外の文字（つまり括弧閉じ）で終わった時、空文字が追加されてしまうためフラグを参照
             // string[] word に mem_num を追加する
             if (!isFinishBracketClose) // 最後が閉じ括弧だった時以外、mem_numを追記
             {
@@ -379,11 +457,16 @@ namespace _240810_calc
             return word;
         }
 
+        /// <summary>
+        /// 単語毎の配列「input_word」に掛け算記号を挿入して返す「input_wordx」
+        /// </summary>
+        /// <param name="word">単語毎の配列「input_word」</param>
+        /// <returns name="wordx">x挿入済み単語毎の配列「」</returns>
         private string[] ConvertToInputWordx(string[] word)
         {
             string[] wordx = new string[] { }; // 戻り値
-            string pre_type = "";
-            string now_type = "";
+            string pre_type = ""; // ループ初回参照時は空文字のため""にしておく
+            string now_type;
 
             for (int i = 0; i < word.Length; i++)
             {
@@ -421,7 +504,7 @@ namespace _240810_calc
                 newArray2[newArray2.Length - 1] = word[i];
                 wordx = newArray2;
 
-                pre_type = now_type; // 更新
+                pre_type = now_type; // 文字の種類を更新
             }
 
             // 確認用
@@ -435,56 +518,11 @@ namespace _240810_calc
             return wordx;
         }
 
-        private void bt_clear_Click(object sender, EventArgs e)
-        {
-            input = "";
-            bracket_depth = 0;
-            period_phase = 0; // 小数点状態リセット
-            this.bracket_depth_display.Text = bracket_depth.ToString();
-            this.label01.Text = input;
-        }
-
-        private void bt_delete_Click(object sender, EventArgs e)
-        {
-            if(input.Length != 0)
-            {
-                string deleteTarget = input.Last().ToString();
-                if (deleteTarget == ")")
-                {
-                    bracket_depth++;
-                    this.bracket_depth_display.Text = bracket_depth.ToString();
-                }
-                else if(deleteTarget == "(")
-                {
-                    bracket_depth--;
-                    this.bracket_depth_display.Text = bracket_depth.ToString();
-                }
-                input = input.Substring(0, input.Length - 1);
-                this.label01.Text = input;
-            }
-        }
-
-
-
-        // ConvertToRevPolandから呼び出される関数 スタックの中身を全て取り出してconvertedに格納する
-        private string[] PopAll(Stack<string> stack, string[] conv)
-        {
-            while (stack.Count > 0)
-            {
-                string pop = stack.Pop();
-                if (pop == "+" || pop == "-" || pop == "x" || pop == "/") // (, ) は無視
-                {
-                    // rev_poにstack1からpopした内容を追加
-                    string[] n = new string[conv.Length + 1];
-                    Array.Copy(conv, n, conv.Length);
-                    n[n.Length - 1] = pop;
-                    conv = n;
-                }
-            }
-            return conv;
-        }
-
-        // 逆ポーランド記法に変換する
+        /// <summary>
+        /// x挿入済み単語毎の配列「input_wordx」を後置記法（配列）に変換する「rev_poland」
+        /// </summary>
+        /// <param name="wordx">x挿入済み単語毎の配列「input_wordx」</param>
+        /// <returns name="converted">後置記法（配列）</returns>
         private string[] ConvertToRevPoland(string[] wordx)
         {
             /**
@@ -501,9 +539,9 @@ namespace _240810_calc
 
             Stack<string> stk = new Stack<string>(); // 計算用スタック
             string[] converted = new string[] { };      // 変換済み配列（戻り値）
-            Dictionary<string, int> priority = new Dictionary<string, int> // 演算子の優先順位付け
+            Dictionary<string, int> priority = new Dictionary<string, int> // 演算子の優先順位付け 大きいほど優先順位高
             {
-                {"(", 0 },
+                {"(", 0 }, // ←0！！！
                 {"x", 2 },
                 {"/", 2 },
                 {"+", 1 },
@@ -549,11 +587,8 @@ namespace _240810_calc
                         converted = temp;
 
                     }
-
                     // ↑までで、スタックの最後に括弧開き　が入った状態になるので、最後にそいつを取り出す
                     if (stk.Count() > 0 && stk.Peek() == "(") stk.Pop();
-
-
                 }
                 else // 演算子
                 {
@@ -571,10 +606,6 @@ namespace _240810_calc
                     stk.Push(x);
                 }
 
-
-
-
-
                 // デバッグ用変数用意
                 foreach (string rp in converted) {db_poland += rp + " ";}
                 Stack<string> st1 = new Stack<string>();
@@ -590,34 +621,37 @@ namespace _240810_calc
                 }
                 Console.WriteLine("stack:  " + db_stack);
                 Console.WriteLine("poland: " + db_poland + "\n\n");
+                // ↑デバッグ用
 
                 i++;
             }
 
             // 最後にstackの中身をすべてrev_polandへ
-            converted = PopAll(stk, converted);
-
+            while (stk.Count > 0)
+            {
+                string[] n = new string[converted.Length + 1];
+                Array.Copy(converted, n, converted.Length);
+                n[n.Length - 1] = stk.Pop(); // popして直接入れる
+                converted = n;
+            }
 
             return converted;
         }
 
 
         // 計算する部分
+        /// <summary>
+        /// 後置記法（配列）「rev_poland」を受け取り解を求める「answer」
+        /// </summary>
+        /// <param name="poland">後置記法（配列）「rev_poland」</param>
+        /// <returns>解（最終的なstackの中身）</returns>
         private float Calculate(string[] poland)
         {
-            Stack<float> stack = new Stack<float>(); // 計算用スタック 
-                // https://kiironomidori.hatenablog.com/entry/csharp_stack
-                // stack.Push("aaa"); で値の格納
-                // char x = stack.Pop(); で値の取り出し
-                // stack.Clear(); で空にする
-                // Console.WriteLine(stack.Peek()); で値を参照するだけ（取り除かない
-
-            int i = 0;
+            Stack<float> stack = new Stack<float>(); // 計算用スタック 演算終了時Popで取り出した値が解←戻り値
+            // int i = 0;
             foreach (string x in poland) { // 配列の要素分だけ動かす
-                // xの種類を判定
-                // 数値, (, ), +-x/ の4通り
-                float xf;
-                if(float.TryParse(x, out xf)) // float型に変換できたとき → 数値なのでスタックに積み上げる
+                // xの種類を判定 数値, (, ), +-x/ の4通り
+                if (float.TryParse(x, out float xf)) // float型に変換できたとき → 数値なのでスタックに積み上げる
                 {
                     stack.Push(xf);
                 }
@@ -636,16 +670,11 @@ namespace _240810_calc
                         case "/":
                             stack.Push(l / r); break;
                     }
-                
-
                 }
-
-                i++;
+                // i++;
             }
-
 
             return stack.Pop();
         }
-
     }
 }
