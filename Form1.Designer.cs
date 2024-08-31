@@ -384,7 +384,6 @@
         private System.Windows.Forms.Button tb_2;
         private System.Windows.Forms.Button bt_0;
         private System.Windows.Forms.Button bt_dot;
-        private System.Windows.Forms.Button bt_brackets_close;
         private System.Windows.Forms.Button bt_add;
         private System.Windows.Forms.Button bt_sub;
         private System.Windows.Forms.Button bt_multi;
@@ -392,6 +391,7 @@
         private System.Windows.Forms.Button bt_delete;
         private System.Windows.Forms.Button bt_clear;
         private System.Windows.Forms.Button bt_brackets_open;
+        private System.Windows.Forms.Button bt_brackets_close;
         private System.Windows.Forms.Label bracket_depth_display;
         private System.Windows.Forms.Label poland_display;
         private System.Windows.Forms.Label answer_display;
