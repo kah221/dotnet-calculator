@@ -85,6 +85,7 @@ namespace _240810_calc
             this.answer_display.Text = answer.ToString();
         }
 
+        // これ必要
         private void Form1_Load(object sender, EventArgs e)
         {
             
