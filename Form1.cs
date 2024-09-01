@@ -8,7 +8,8 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
+using System.Threading.Tasks; // 非同期処理で処理を待機するために必要
+using System.Threading;
 using System.Windows.Forms;
 using static System.Resources.ResXFileRef;
 
@@ -31,6 +32,9 @@ namespace _240810_calc
         string[] symbol_typeC = { "." };                                // 分類C「 ( 」
         string[] symbol_typeD = { "+", "-", "x", "/", ".", "(" };       // 分類D「 ) 」
 
+        // 計算可能かどうかを判別するための、最後に来てはいけない文字
+        // これはsymbol_typeDと同じなのでこれを流用する
+
         // input → input_list → input_word に変換する関数（ConvertToInputWord()関数）で、文字種類の判定に使う
         string[] group_num = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
         string[] group_cal = { "+", "-", "x", "/" };
@@ -40,6 +44,17 @@ namespace _240810_calc
         string[] input_wordx = new string[] { }; // ↑で省略されていたx記号を補ったもの
         string[] rev_poland = new string[] { }; // ↑を並べ替え、逆ポーランド記法にしたもの
         float answer; // 計算結果Calcrate()の結果をこれに入れる
+
+        /**
+         * 表示モードについて
+         * - isShowCalcProcess == false のとき 計算ボタンで即結果を表示「即時計算」
+         * - isShowCalcProcess == true  のとき 計算ボタンで input_wordx → rev_poland → answer までの計算過程を順々に表示
+         * input, input_word, input_wordx はinputに連動して都度表示させておく
+         */
+
+        // 過程表示モード切替
+        int freq = 2;               // 過程の表示更新の周波数
+        bool isShowCalcProcess = false;  // 計算過程を表示するか否か input_wordx → rev_poland → answer
 
         /// <summary>
         /// アプリが開かれたとき、コンポーネントの初期化、画面サイズの指定等を行う
@@ -62,6 +77,78 @@ namespace _240810_calc
         // ↓ クリックイベントの処理
         // ------------------------------------------------------------------------------------------
 
+        /// <summary>
+        /// 数字・記号を押したときに表示する文字を更新する。「C」ボタンか否か、モードがどちらか、により処理を分岐
+        /// この関数が呼ばれる前に、inputの更新は完了させておく
+        /// </summary>
+        private void CallConvertCalcUpdate(string btnName = "")
+        {
+            if(btnName == "C") // 「C」ボタンからこれが呼び出されたとき → 全てを空に
+            {
+                UpdateInput(input);
+                UpdateWord(input_word);
+                UpdateWordx(input_wordx);
+                UpdateRevPoland(rev_poland);
+                // UpdateAnswer(answer.ToString());
+                answer_display.Text = ""; // 「C」が2回連続で押されたときに前回の結果が表示される問題の応急処置
+            }
+            else // それ以外のボタンからこれが呼び出されたとき → inputをもとに順に処理を呼び出す
+            {
+                UpdateInput(input);
+
+                input_word = ConvertToInputWord(input);
+                UpdateWord(input_word);
+
+                input_wordx = ConvertToInputWordx(input_word);
+                UpdateWordx(input_wordx);
+
+                if (isShowCalcProcess == false && JudgeFormulaCanSolve()) // 即時計算モード かつ 数式が解けるとき → 解まで表示
+                {
+                    rev_poland = ConvertToRevPoland(input_wordx);
+                    UpdateRevPoland(rev_poland);
+
+                    answer = Calculate(rev_poland);
+                    UpdateAnswer(answer.ToString());
+                }
+
+                if (btnName == "delete" && JudgeFormulaCanSolve() == false)  // 一文字削除ボタン かつ 数式が解けないとき → モードにかかわらずrev_poとanswerを表示しない
+                {
+                    // 一時的に隠すだけなので、関数を介さずに行う
+                    poland_display.Text = "";
+                    answer_display.Text = "";
+                }
+            }
+        }
+
+        /// <summary>
+        /// 計算可能かどうかを判断する
+        /// </summary>
+        /// <returns>計算可能か否か trueなら計算可能</returns>
+        private bool JudgeFormulaCanSolve()
+        {
+            // 計算可能かを判断 
+            if (input.Count() == 0)
+            {
+                Console.WriteLine("JudgeFormulaCanSolve >>> 数式が空です");
+                return false;
+            }
+            else if (bracket_depth != 0) // 括弧の深さが0でないとき計算不可能
+            {
+                Console.WriteLine("JudgeFormulaCanSolve >>> 括弧が閉じていません");
+                return false;
+            }
+            else if (symbol_typeD.Any(c => c == input[input.Length - 1].ToString())) // 入力文字列が計算不可能な終わり方のとき（typeDを流用）
+            {
+                Console.WriteLine("JudgeFormulaCanSolve >>> 解けない数式です");
+                return false;
+            }
+            else
+            {
+                Console.WriteLine("JudgeFormulaCanSolve >>> 計算可能です（小数点のバリデーションは未実装）");
+                return true;
+            }
+        }
+
         private void label1_Click(object sender, EventArgs e)
         {
 
@@ -74,24 +161,25 @@ namespace _240810_calc
         /// <param name="e">イベントの情報のインスタンス</param>
         private void action_Click(object sender, EventArgs e)
         {
-            this.input_word   = ConvertToInputWord(input); // input → input_list → input_word
-            string word_txt = "";
-            foreach (string wt in input_word) { word_txt += wt + " "; }
-            this.word_display.Text = "input_word: " + word_txt;
+            // 計算可能かを判断 
+            if (JudgeFormulaCanSolve())
+            {
+                input_word = ConvertToInputWord(input); // input → input_list → input_word
+                input_wordx = ConvertToInputWordx(input_word); // input_word → input_wordx
+                rev_poland = ConvertToRevPoland(input_wordx); // input_wordx → rev_poland
+                answer = Calculate(rev_poland);
 
-            this.input_wordx  = ConvertToInputWordx(input_word); // input_word → input_wordx
-            string input_wordx_txt = "";
-            foreach (string iwt in input_wordx) { input_wordx_txt += iwt + " "; }
-            this.wordx_display.Text = "input_wordx: " + input_wordx_txt;
+                // 過程表示モードに関わらず結果を表示する 結果表示は後置記法と解のみ
+                UpdateInput(input);
+                UpdateWord(input_word);
+                UpdateWordx(input_wordx);
+                UpdateRevPoland(rev_poland);
+                UpdateAnswer(answer.ToString());
+            }
+            else
+            {
 
-            this.rev_poland = ConvertToRevPoland(input_wordx); // input_wordx → rev_poland
-            string rev_po_txt = "";
-            foreach (string rp in rev_poland){rev_po_txt += rp + " "; }
-            this.poland_display.Text = "rev_poland: " + rev_po_txt;
-            
-            this.answer = Calculate(rev_poland);
-            // Console.WriteLine("answer: " + answer);
-            this.answer_display.Text = answer.ToString();
+            }
         }
 
         /// <summary>
@@ -107,7 +195,9 @@ namespace _240810_calc
             {
                 period_phase = 2; // 2：小数点と数値以外の入力待ち状態へ 
             }
-            this.label01.Text = input;
+            // 都度更新------------------------------
+            CallConvertCalcUpdate();
+            // ------------------------------
         }
 
         /// <summary>
@@ -162,7 +252,9 @@ namespace _240810_calc
                 }
 
             }
-            this.label01.Text = input; // 最後に画面表示を更新
+            // 都度更新------------------------------
+            CallConvertCalcUpdate();
+            // ------------------------------
         }
 
         /// <summary>
@@ -185,7 +277,9 @@ namespace _240810_calc
 
                 }
             }
-            this.label01.Text = input; // 最後に画面表示を更新
+            // 都度更新------------------------------
+            CallConvertCalcUpdate();
+            // ------------------------------
         }
 
         /// <summary>
@@ -214,7 +308,9 @@ namespace _240810_calc
                 }
 
             }
-            this.label01.Text = input; // 最後に画面表示を更新
+            // 都度更新------------------------------
+            CallConvertCalcUpdate();
+            // ------------------------------
         }
 
         /// <summary>
@@ -238,7 +334,9 @@ namespace _240810_calc
                     }
                 }
             }
-            this.label01.Text = input; // 最後に画面表示を更新
+            // 都度更新------------------------------
+            CallConvertCalcUpdate();
+            // ------------------------------
         }
 
         /// <summary>
@@ -248,11 +346,18 @@ namespace _240810_calc
         /// <param name="e">イベントの情報のインスタンス</param>
         private void bt_clear_Click(object sender, EventArgs e)
         {
+            // リセット
             input = "";
-            bracket_depth = 0; // 括弧の深さリセット
-            period_phase = 0;  // 小数点状態リセット
-            this.bracket_depth_display.Text = bracket_depth.ToString();
-            this.label01.Text = input;
+            input_word = new string[] { };
+            input_wordx = new string[] { };
+            rev_poland = new string[] { };
+            bracket_depth = 0; // 括弧の深さ
+            period_phase = 0;  // 小数点状態
+
+            // 都度更新------------------------------
+            bracket_depth_display.Text = bracket_depth.ToString();
+            CallConvertCalcUpdate("C"); // Cから呼び出されたよというフラグをつける
+            // ------------------------------
         }
 
         /// <summary>
@@ -276,7 +381,10 @@ namespace _240810_calc
                     this.bracket_depth_display.Text = bracket_depth.ToString();
                 }
                 input = input.Substring(0, input.Length - 1);
-                this.label01.Text = input;
+
+                // 都度更新------------------------------
+                CallConvertCalcUpdate("delete");
+                // ------------------------------
             }
         }
 
@@ -537,6 +645,7 @@ namespace _240810_calc
              */
             Console.WriteLine("wordxの長さ" + wordx.Length);
 
+            
             Stack<string> stk = new Stack<string>(); // 計算用スタック
             string[] converted = new string[] { };      // 変換済み配列（戻り値）
             Dictionary<string, int> priority = new Dictionary<string, int> // 演算子の優先順位付け 大きいほど優先順位高
@@ -547,7 +656,6 @@ namespace _240810_calc
                 {"+", 1 },
                 {"-", 1 }
             };
-
 
             int i = 1;
             foreach(string x in wordx)
@@ -624,6 +732,11 @@ namespace _240810_calc
                 // ↑デバッグ用
 
                 i++;
+                if(isShowCalcProcess == true)
+                {
+                    // rev_polandの途中経過
+                    Thread.Sleep(1000/freq);
+                }
             }
 
             // 最後にstackの中身をすべてrev_polandへ
@@ -675,6 +788,64 @@ namespace _240810_calc
             }
 
             return stack.Pop();
+        }
+
+
+        // ------------------------------------------------------------------------------------------
+        // ↑ 変換・計算の処理
+        // ↓ 計算式の画面表示 計算過程の表示のため
+        // ------------------------------------------------------------------------------------------
+
+
+        /// <summary>
+        /// 入力文字の表示を更新する関数
+        /// </summary>
+        /// <param name="input"></param>
+        private void UpdateInput(string input)
+        {
+            label01.Text = input;
+        }
+
+        /// <summary>
+        /// 処理中のinput_wordを受け取り、中身を文字列に結合して表示を更新
+        /// </summary>
+        /// <param name="list_w"></param>
+        private void UpdateWord(string[] list_w)
+        {
+            string text = "";
+            foreach (string lw in list_w) { text += lw + " "; }
+            word_display.Text = text;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="list_wx"></param>
+        private void UpdateWordx(string[] list_wx)
+        {
+            string text = "";
+            foreach (string lwx in list_wx) { text += lwx + " "; }
+            wordx_display.Text = text;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="list_rp"></param>
+        private void UpdateRevPoland(string[] list_rp)
+        {
+            string text = "";
+            foreach (string lrp in list_rp) { text += lrp + " "; }
+            poland_display.Text = text;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="answer"></param>
+        private void UpdateAnswer(string answer)
+        {
+            answer_display.Text = answer;
         }
     }
 }
