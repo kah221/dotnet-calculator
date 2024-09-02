@@ -12,7 +12,7 @@ using System.Threading.Tasks; // 非同期処理で処理を待機するため�
 using System.Threading;
 using System.Windows.Forms;
 using static System.Resources.ResXFileRef;
-
+using System.Drawing.Text;
 
 namespace _240810_calc
 {
@@ -53,8 +53,8 @@ namespace _240810_calc
          */
 
         // 過程表示モード切替
-        int freq = 2;               // 過程の表示更新の周波数
-        bool isShowCalcProcess = false;  // 計算過程を表示するか否か input_wordx → rev_poland → answer
+        int freq = 5;               // 過程の表示更新の周波数
+        bool isShowCalcProcess = true;  // 計算過程を表示するか否か input_wordx → rev_poland → answer
 
         /// <summary>
         /// アプリが開かれたとき、コンポーネントの初期化、画面サイズの指定等を行う
@@ -714,30 +714,20 @@ namespace _240810_calc
                     stk.Push(x);
                 }
 
-                // デバッグ用変数用意
-                foreach (string rp in converted) {db_poland += rp + " ";}
-                Stack<string> st1 = new Stack<string>();
-                while (stk.Count > 0)
-                {
-                    string s = stk.Pop();
-                    st1.Push(s);
-                    db_stack += s + " ";
-                }
-                while (st1.Count > 0)
-                {
-                    stk.Push(st1.Pop());
-                }
-                Console.WriteLine("stack:  " + db_stack);
-                Console.WriteLine("poland: " + db_poland + "\n\n");
+
                 // ↑デバッグ用
 
                 i++;
-                if(isShowCalcProcess == true)
+                // 1ループが終わった時の途中経過を表示
+                if (isShowCalcProcess == true)
                 {
-                    // rev_polandの途中経過
-                    Thread.Sleep(1000/freq);
+                    // 画面に表示する関数を呼び出す
+                    UpdateXToRev(stk, converted, x); // 引数(スタック, 変換後, 現在見ている文字)
+
                 }
             }
+
+
 
             // 最後にstackの中身をすべてrev_polandへ
             while (stk.Count > 0)
@@ -746,11 +736,29 @@ namespace _240810_calc
                 Array.Copy(converted, n, converted.Length);
                 n[n.Length - 1] = stk.Pop(); // popして直接入れる
                 converted = n;
+
+                if (isShowCalcProcess == true)
+                {
+                    UpdateXToRev(stk, converted);
+                }
             }
 
             return converted;
         }
 
+        private Task StopTime()
+        {
+            var task = Task.Run(() =>
+            {
+                Thread.Sleep(1000 / freq);
+            });
+            return task;
+        }
+
+        private async Task StopTimeAsync()
+        {
+            await Task.Delay(1000 / freq);
+        }
 
         // 計算する部分
         /// <summary>
@@ -834,6 +842,7 @@ namespace _240810_calc
         /// <param name="list_rp"></param>
         private void UpdateRevPoland(string[] list_rp)
         {
+            Console.WriteLine("UpdateRevPolandが呼び出された");
             string text = "";
             foreach (string lrp in list_rp) { text += lrp + " "; }
             poland_display.Text = text;
@@ -846,6 +855,64 @@ namespace _240810_calc
         private void UpdateAnswer(string answer)
         {
             answer_display.Text = answer;
+        }
+
+        /// <summary>
+        /// input_wordxからrev_polandへの変換過程を表示する関数
+        /// これはConvertToRevPoland()の中のfor文内で何回も呼び出される
+        /// </summary>
+        /// <param name="current"></param>
+        /// <param name="stack"></param>
+        /// <param name="rev_po"></param>
+        private void UpdateXToRev(Stack<string> stack, string[] rev_po, string current = "")
+        {
+            // デバッグ用変数用意
+            string stack_txt = "";
+            string rev_po_txt = "";
+            Stack<string> stack_copy = new Stack<string>(); // スタックをコピーする一時的なスタック
+
+            foreach (string rp in rev_po) // 後置記法を配列→文字列に
+            {
+                rev_po_txt += rp + " ";
+            }
+
+            while (stack.Count > 0) // 一時的なスタックを介してスタックの中身を文字列に写す
+            {
+                string s = stack.Pop();
+                stack_copy.Push(s);
+                stack_txt += s + " ";
+            }
+            while (stack_copy.Count > 0) // スタックを復元
+            {
+                stack.Push(stack_copy.Pop());
+            }
+            
+            Console.WriteLine("current:  " + current);
+            Console.WriteLine("stack:    " + stack_txt);
+            Console.WriteLine("poland:   " + rev_po_txt + "\n\n");
+            current_torev_display.Text = current;
+            stack_torev_display.Text = stack_txt;
+            poland_display.Text = rev_po_txt;
+
+
+
+            var task = StopTime(); // 指定時間待つスレッドを起動
+            task.Wait(); // 待機
+            //await StopTimeAsync();
+        }
+
+        /// <summary>
+        /// rev_polandからanswerへの演算過程を表示する関数
+        /// これはCalculate()の中のfor文内で何回も呼び出される
+        /// </summary>
+        /// <param name="stack"></param>
+        /// <param name="rev_po"></param>
+        /// <param name="ans"></param>
+        private async void UpdateRevToAns(Stack<string> stack, string[] rev_po, float ans)
+        {
+            // var task = StopTime(); // 指定時間待つスレッドを起動
+            // task.Wait(); // 待機
+            await StopTimeAsync();
         }
     }
 }
