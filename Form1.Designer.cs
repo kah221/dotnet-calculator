@@ -54,6 +54,8 @@
             this.answer_display = new System.Windows.Forms.Label();
             this.word_display = new System.Windows.Forms.Label();
             this.wordx_display = new System.Windows.Forms.Label();
+            this.stack_torev_display = new System.Windows.Forms.Label();
+            this.current_torev_display = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // action
@@ -298,7 +300,7 @@
             // 
             this.poland_display.AutoSize = true;
             this.poland_display.Font = new System.Drawing.Font("07やさしさゴシック", 20.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.poland_display.Location = new System.Drawing.Point(12, 196);
+            this.poland_display.Location = new System.Drawing.Point(12, 278);
             this.poland_display.Name = "poland_display";
             this.poland_display.Size = new System.Drawing.Size(0, 34);
             this.poland_display.TabIndex = 22;
@@ -307,7 +309,7 @@
             // 
             this.answer_display.AutoSize = true;
             this.answer_display.Font = new System.Drawing.Font("07やさしさゴシック", 20.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.answer_display.Location = new System.Drawing.Point(12, 278);
+            this.answer_display.Location = new System.Drawing.Point(12, 362);
             this.answer_display.Name = "answer_display";
             this.answer_display.Size = new System.Drawing.Size(0, 34);
             this.answer_display.TabIndex = 23;
@@ -330,11 +332,31 @@
             this.wordx_display.Size = new System.Drawing.Size(0, 34);
             this.wordx_display.TabIndex = 25;
             // 
+            // stack_torev_display
+            // 
+            this.stack_torev_display.AutoSize = true;
+            this.stack_torev_display.Font = new System.Drawing.Font("07やさしさゴシック", 20.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.stack_torev_display.Location = new System.Drawing.Point(12, 235);
+            this.stack_torev_display.Name = "stack_torev_display";
+            this.stack_torev_display.Size = new System.Drawing.Size(0, 34);
+            this.stack_torev_display.TabIndex = 26;
+            // 
+            // current_torev_display
+            // 
+            this.current_torev_display.AutoSize = true;
+            this.current_torev_display.Font = new System.Drawing.Font("07やさしさゴシック", 20.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.current_torev_display.Location = new System.Drawing.Point(12, 192);
+            this.current_torev_display.Name = "current_torev_display";
+            this.current_torev_display.Size = new System.Drawing.Size(0, 34);
+            this.current_torev_display.TabIndex = 27;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(884, 661);
+            this.Controls.Add(this.current_torev_display);
+            this.Controls.Add(this.stack_torev_display);
             this.Controls.Add(this.wordx_display);
             this.Controls.Add(this.word_display);
             this.Controls.Add(this.answer_display);
@@ -397,6 +419,8 @@
         private System.Windows.Forms.Label answer_display;
         private System.Windows.Forms.Label word_display;
         private System.Windows.Forms.Label wordx_display;
+        private System.Windows.Forms.Label stack_torev_display;
+        private System.Windows.Forms.Label current_torev_display;
     }
 }
 
