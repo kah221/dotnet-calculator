@@ -13,6 +13,8 @@ using System.Threading;
 using System.Windows.Forms;
 using static System.Resources.ResXFileRef;
 using System.Drawing.Text;
+using static System.Threading.Timer;
+using System.Windows.Threading;
 
 namespace _240810_calc
 {
@@ -53,7 +55,7 @@ namespace _240810_calc
          */
 
         // 過程表示モード切替
-        int freq = 5;               // 過程の表示更新の周波数
+        int freq = 2;               // 過程の表示更新の周波数
         bool isShowCalcProcess = true;  // 計算過程を表示するか否か input_wordx → rev_poland → answer
 
         /// <summary>
@@ -657,7 +659,7 @@ namespace _240810_calc
                 {"-", 1 }
             };
 
-            int i = 1;
+            int i = 0;
             foreach(string x in wordx)
             {
                 // デバッグ用文字列
@@ -721,8 +723,14 @@ namespace _240810_calc
                 // 1ループが終わった時の途中経過を表示
                 if (isShowCalcProcess == true)
                 {
+                    string wordx_cut = "";
+                    for (int j=i; j<wordx.Length - 1; j++)
+                    {
+                        wordx_cut += wordx[j];
+                    }
+
                     // 画面に表示する関数を呼び出す
-                    UpdateXToRev(stk, converted, x); // 引数(スタック, 変換後, 現在見ている文字)
+                    UpdateXToRev(wordx_cut, stk, converted, x); // 引数(変換前, スタック, 変換後, 現在見ている文字)
 
                 }
             }
@@ -739,26 +747,14 @@ namespace _240810_calc
 
                 if (isShowCalcProcess == true)
                 {
-                    UpdateXToRev(stk, converted);
+                    UpdateXToRev("", stk, converted);
                 }
             }
 
             return converted;
         }
 
-        private Task StopTime()
-        {
-            var task = Task.Run(() =>
-            {
-                Thread.Sleep(1000 / freq);
-            });
-            return task;
-        }
 
-        private async Task StopTimeAsync()
-        {
-            await Task.Delay(1000 / freq);
-        }
 
         // 計算する部分
         /// <summary>
@@ -857,6 +853,35 @@ namespace _240810_calc
             answer_display.Text = answer;
         }
 
+
+        private Task StopTime(string a)
+        {
+            wordx_cut_display.Text = a;
+            var task = Task.Run(() =>
+            {
+                Thread.Sleep(1000 / freq);
+            });
+            return task;
+        }
+        
+        private async Task StopTimeAsync()
+        {
+            await Task.Delay(1000 / freq);
+        }
+
+
+
+        /**
+         * ------------------------------
+         */
+        // 本より
+        //static System.Threading.Timer timer;
+        //static int counter = 0;
+        //static int n = 5; // 繰り返し回数
+        /**
+         * ------------------------------
+         */
+
         /// <summary>
         /// input_wordxからrev_polandへの変換過程を表示する関数
         /// これはConvertToRevPoland()の中のfor文内で何回も呼び出される
@@ -864,7 +889,7 @@ namespace _240810_calc
         /// <param name="current"></param>
         /// <param name="stack"></param>
         /// <param name="rev_po"></param>
-        private void UpdateXToRev(Stack<string> stack, string[] rev_po, string current = "")
+        private void UpdateXToRev(string x_cut, Stack<string> stack, string[] rev_po, string current = "")
         {
             // デバッグ用変数用意
             string stack_txt = "";
@@ -890,16 +915,65 @@ namespace _240810_calc
             Console.WriteLine("current:  " + current);
             Console.WriteLine("stack:    " + stack_txt);
             Console.WriteLine("poland:   " + rev_po_txt + "\n\n");
-            current_torev_display.Text = current;
-            stack_torev_display.Text = stack_txt;
-            poland_display.Text = rev_po_txt;
 
 
+            /**
+             * ------------------------------
+             */
+            //wordx_cut_display.Text = x_cut;
+            //current_torev_display.Text = current;
+            //stack_torev_display.Text = stack_txt;
+            //poland_display.Text = rev_po_txt;
+            // 一定時間ごとに繰り返したい処理を表すデリケート
+            //TimerCallback = tc = 
+            // 実際には非同期処理で使用するパラメータを持つオブジェクトを返す
+            //    object state = new object();
+            // 0秒後に開始、3秒ごとに処理を繰り返す　が、直後でDisposeでタイマーを破棄する
+            //    timer = new System.Threading.Timer(new TimerCallback(RefreshDisplay), state, 0, 3000);
+            //    Thread.Sleep(1000/freq);
+            //    Console.WriteLine(".");
+            //    timer.Dispose();
+            /**
+             * ------------------------------
+             */
 
-            var task = StopTime(); // 指定時間待つスレッドを起動
-            task.Wait(); // 待機
-            //await StopTimeAsync();
+            int counter = 0;
+            int n = 5;
+            DispatcherTimer timer = new DispatcherTimer();
+            timer.Interval = TimeSpan.FromMilliseconds(1000 / freq);
+            timer.Tick += (sender, e) =>
+            {
+                // UI 更新処理
+                wordx_cut_display.Text = x_cut;
+                current_torev_display.Text = current;
+                stack_torev_display.Text = stack_txt;
+                poland_display.Text = rev_po_txt;
+                counter++;
+                if (counter >= n)
+                {
+                    timer.Stop();
+                }
+            };
+            timer.Start();
         }
+
+        /**
+        * ------------------------------
+        */
+        //static private void RefreshDisplay(object state)
+        //{
+        //    counter++;
+        //    Console.WriteLine(counter);
+            // 指定回数繰り返したらタイマーを破棄
+            //if (n <= counter)
+              //  timer.Dispose();
+        //}
+        /**
+        * ------------------------------
+        */
+
+
+
 
         /// <summary>
         /// rev_polandからanswerへの演算過程を表示する関数
@@ -910,9 +984,11 @@ namespace _240810_calc
         /// <param name="ans"></param>
         private async void UpdateRevToAns(Stack<string> stack, string[] rev_po, float ans)
         {
-            // var task = StopTime(); // 指定時間待つスレッドを起動
-            // task.Wait(); // 待機
-            await StopTimeAsync();
+
+
+
+
+
         }
     }
 }
