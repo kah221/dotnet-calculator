@@ -944,10 +944,8 @@ namespace _240810_calc
             timer.Tick += (sender, e) =>
             {
                 // UI 更新処理
-                wordx_cut_display.Text = x_cut;
-                current_torev_display.Text = current;
-                stack_torev_display.Text = stack_txt;
-                poland_display.Text = rev_po_txt;
+                Console.WriteLine("タイマーの中 counter: " + counter);
+
                 counter++;
                 if (counter >= n)
                 {
