@@ -158,13 +158,13 @@ namespace _240810_calc
 
         /// <summary>
         /// 「計算」ボタンが押されたとき、入力文字列の変換・計算の各関数を順に呼び出す
+        /// このボタンはisShowCalcProcess==trueのときに押せないようにする
         /// </summary>
         /// <param name="sender">ボタンオブジェクト</param>
         /// <param name="e">イベントの情報のインスタンス</param>
         private void action_Click(object sender, EventArgs e)
         {
-            // 計算可能かを判断 
-            if (JudgeFormulaCanSolve())
+            if (JudgeFormulaCanSolve()) // 計算可能なら
             {
                 input_word = ConvertToInputWord(input); // input → input_list → input_word
                 input_wordx = ConvertToInputWordx(input_word); // input_word → input_wordx
@@ -635,6 +635,20 @@ namespace _240810_calc
         /// <returns name="converted">後置記法（配列）</returns>
         private string[] ConvertToRevPoland(string[] wordx)
         {
+            Console.WriteLine("ConvertToRevPolandが呼び出された");
+            Console.WriteLine("wordxの長さ" + wordx.Length);
+            // 変換用
+            Stack<string> _stack = new Stack<string>();    // 計算用スタック
+            string[] _array = new string[] { };      // 変換済み配列（戻り値）
+            Dictionary<string, int> priority = new Dictionary<string, int> // 演算子の優先順位付け 大きいほど優先順位高
+            {
+                {"(", 0 }, // ←0！！！
+                {"x", 2 },
+                {"/", 2 },
+                {"+", 1 },
+                {"-", 1 }
+            };
+
             /**
              * ①数値はスタックに積まない
              * ②演算子はスタックに積む
@@ -645,22 +659,11 @@ namespace _240810_calc
              * ④最後に演算子をスタックからすべて取り出す
              * 
              */
-            Console.WriteLine("wordxの長さ" + wordx.Length);
 
-            
-            Stack<string> stk = new Stack<string>(); // 計算用スタック
-            string[] converted = new string[] { };      // 変換済み配列（戻り値）
-            Dictionary<string, int> priority = new Dictionary<string, int> // 演算子の優先順位付け 大きいほど優先順位高
-            {
-                {"(", 0 }, // ←0！！！
-                {"x", 2 },
-                {"/", 2 },
-                {"+", 1 },
-                {"-", 1 }
-            };
 
+            //------------------------------変換↓
             int i = 0;
-            foreach(string x in wordx)
+            foreach (string x in wordx)
             {
                 // デバッグ用文字列
                 string db_poland = "";
@@ -674,84 +677,191 @@ namespace _240810_calc
                 {
                     Console.WriteLine(x + " ←数値");
                     // x→converted
-                    string[] temp = new string[converted.Length + 1];
-                    Array.Copy(converted, temp, converted.Length);
+                    string[] temp = new string[_array.Length + 1];
+                    Array.Copy(_array, temp, _array.Length);
                     temp[temp.Length - 1] = x;
-                    converted = temp;
+                    _array = temp;
                 }
-                else if(x == "(")
+                else if (x == "(")
                 {
                     Console.WriteLine(x + " ←開き括弧");
-                    stk.Push(x);
+                    _stack.Push(x);
                 }
-                else if(x == ")")
+                else if (x == ")")
                 {
                     Console.WriteLine(x + " ←閉じ括弧");
                     // スタックから左括弧が出るまでstack→converted
-                    while (stk.Count() > 0 && stk.Peek() != "(") // ←　境界が少し怪しい
+                    while (_stack.Count() > 0 && _stack.Peek() != "(") // ←　境界が少し怪しい
                     {
 
-                        string[] temp = new string[converted.Length + 1];
-                        Array.Copy(converted, temp, converted.Length);
-                        temp[temp.Length - 1] = stk.Pop();
-                        converted = temp;
+                        string[] temp = new string[_array.Length + 1];
+                        Array.Copy(_array, temp, _array.Length);
+                        temp[temp.Length - 1] = _stack.Pop();
+                        _array = temp;
 
                     }
                     // ↑までで、スタックの最後に括弧開き　が入った状態になるので、最後にそいつを取り出す
-                    if (stk.Count() > 0 && stk.Peek() == "(") stk.Pop();
+                    if (_stack.Count() > 0 && _stack.Peek() == "(") _stack.Pop();
                 }
                 else // 演算子
                 {
                     Console.WriteLine(x + " ←演算子");
-                    while ((stk.Count() > 0) && (priority[x] <= priority[stk.Peek()]))
+                    while ((_stack.Count() > 0) && (priority[x] <= priority[_stack.Peek()]))
                     {
                         // 優先順位確認
                         Console.WriteLine("今回の演算子の優先順位　: " + priority[x]);
-                        Console.WriteLine("スタックの先頭の優先順位: " + priority[stk.Peek()]);
-                        string[] temp = new string[converted.Length + 1];
-                        Array.Copy(converted, temp, converted.Length);
-                        temp[temp.Length - 1] = stk.Pop();
-                        converted = temp;
+                        Console.WriteLine("スタックの先頭の優先順位: " + priority[_stack.Peek()]);
+                        string[] temp = new string[_array.Length + 1];
+                        Array.Copy(_array, temp, _array.Length);
+                        temp[temp.Length - 1] = _stack.Pop();
+                        _array = temp;
                     }
-                    stk.Push(x);
+                    _stack.Push(x);
                 }
+            //------------------------------変換↑
 
 
-                // ↑デバッグ用
 
-                i++;
-                // 1ループが終わった時の途中経過を表示
+                // 計算過程表示モードならばif文内に入る　→　遅延と表示
                 if (isShowCalcProcess == true)
                 {
-                    string wordx_cut = "";
-                    for (int j=i; j<wordx.Length - 1; j++)
+                    Console.WriteLine("isShowCalcProcessがtrue");
+                    //------------------------------遅延↓
+                    async void DelayTime()
                     {
-                        wordx_cut += wordx[j];
-                    }
+                        Console.WriteLine("DelayTime");
+                        string wordx_txt = ""; // 変換前
+                        string target = x;
+                        string _stack_txt = "";
+                        string _array_txt = "";
+                        Stack<string> _stack_copy = new Stack<string>();
+                        //------------------------------用意↓
 
-                    // 画面に表示する関数を呼び出す
-                    UpdateXToRev(wordx_cut, stk, converted, x); // 引数(変換前, スタック, 変換後, 現在見ている文字)
+                        // 変換前の配列　→　文字列
+                        for (int j = i; j < wordx.Length - 1; j++)
+                        {
+                            wordx_txt += wordx[j];
+                        }
+                        // 画面に表示する関数を呼び出す
+                        //UpdateXToRev(wordx_cut, stk, converted, x); // 引数(変換前, スタック, 変換後, 現在見ている文字)
+
+                        // 変換後の配列　→　文字列
+                        foreach (string arr in _array) // 後置記法を配列→文字列に
+                        {
+                            _array_txt += arr + " ";
+                        }
+
+                        // スタックの複製と復元
+                        while (_stack.Count > 0) // 一時的なスタックを介してスタックの中身を文字列に写す
+                        {
+                            string s = _stack.Pop();
+                            _stack_copy.Push(s);
+                            _stack_txt += s + " ";
+                        }
+                        while (_stack_copy.Count > 0) // スタックを復元
+                        {
+                            _stack.Push(_stack_copy.Pop());
+                        }
+                        //------------------------------用意↑
+
+                        //------------------------------表示↓
+                        Console.WriteLine("wordx_txt:  " + wordx_txt);
+                        Console.WriteLine("target:     " + target);
+                        Console.WriteLine("_stack_txt: " + _stack_txt);
+                        Console.WriteLine("_array_txt: " + _array_txt + "\n\n");
+
+                        wordx_cut_display.Text = target;
+                        stack_torev_display.Text = _stack_txt;
+                        current_torev_display.Text = _array_txt;
+                        
+                        //------------------------------表示↑
+
+
+                        await Task.Delay(1000);
+                    }
+                    DelayTime();
+                    //------------------------------遅延↑
 
                 }
+                i++;
             }
+
+
 
 
 
             // 最後にstackの中身をすべてrev_polandへ
-            while (stk.Count > 0)
+            while (_stack.Count > 0)
             {
-                string[] n = new string[converted.Length + 1];
-                Array.Copy(converted, n, converted.Length);
-                n[n.Length - 1] = stk.Pop(); // popして直接入れる
-                converted = n;
+                string[] n = new string[_array.Length + 1];
+                Array.Copy(_array, n, _array.Length);
+                n[n.Length - 1] = _stack.Pop(); // popして直接入れる
+                _array = n;
 
+
+
+
+
+
+                // 計算過程表示モードならばif文内に入る　→　遅延と表示
                 if (isShowCalcProcess == true)
                 {
-                    UpdateXToRev("", stk, converted);
+                    Console.WriteLine("isShowCalcProcessがtrue");
+                    //------------------------------遅延↓
+                    async void DelayTime()
+                    {
+                        Console.WriteLine("DelayTime");
+                        string wordx_txt = ""; // 変換前
+                        // string target = x;
+                        string _stack_txt = "";
+                        string _array_txt = "";
+                        Stack<string> _stack_copy = new Stack<string>();
+                        //------------------------------用意↓
+
+                        // 変換前の配列　→　文字列
+                        for (int j = i; j < wordx.Length - 1; j++)
+                        {
+                            wordx_txt += wordx[j];
+                        }
+                        // 画面に表示する関数を呼び出す
+                        //UpdateXToRev(wordx_cut, stk, converted, x); // 引数(変換前, スタック, 変換後, 現在見ている文字)
+
+                        // 変換後の配列　→　文字列
+                        foreach (string arr in _array) // 後置記法を配列→文字列に
+                        {
+                            _array_txt += arr + " ";
+                        }
+
+                        // スタックの複製と復元
+                        while (_stack.Count > 0) // 一時的なスタックを介してスタックの中身を文字列に写す
+                        {
+                            string s = _stack.Pop();
+                            _stack_copy.Push(s);
+                            _stack_txt += s + " ";
+                        }
+                        while (_stack_copy.Count > 0) // スタックを復元
+                        {
+                            _stack.Push(_stack_copy.Pop());
+                        }
+                        //------------------------------用意↑
+
+                        //------------------------------表示↓
+                        Console.WriteLine("wordx_txt:  " + wordx_txt);
+                        // Console.WriteLine("target:     " + target);
+                        Console.WriteLine("_stack_txt: " + _stack_txt);
+                        Console.WriteLine("_array_txt: " + _array_txt + "\n\n");
+                        //------------------------------表示↑
+
+
+                        await Task.Delay(1000);
+                    }
+                    DelayTime();
+                    //------------------------------遅延↑
+
                 }
             }
 
-            return converted;
+            return _array;
         }
 
 
@@ -764,6 +874,7 @@ namespace _240810_calc
         /// <returns>解（最終的なstackの中身）</returns>
         private float Calculate(string[] poland)
         {
+            Console.WriteLine("Caluculateが呼び出された");
             Stack<float> stack = new Stack<float>(); // 計算用スタック 演算終了時Popで取り出した値が解←戻り値
             // int i = 0;
             foreach (string x in poland) { // 配列の要素分だけ動かす
@@ -871,16 +982,7 @@ namespace _240810_calc
 
 
 
-        /**
-         * ------------------------------
-         */
-        // 本より
-        //static System.Threading.Timer timer;
-        //static int counter = 0;
-        //static int n = 5; // 繰り返し回数
-        /**
-         * ------------------------------
-         */
+
 
         /// <summary>
         /// input_wordxからrev_polandへの変換過程を表示する関数
@@ -915,60 +1017,9 @@ namespace _240810_calc
             Console.WriteLine("current:  " + current);
             Console.WriteLine("stack:    " + stack_txt);
             Console.WriteLine("poland:   " + rev_po_txt + "\n\n");
-
-
-            /**
-             * ------------------------------
-             */
-            //wordx_cut_display.Text = x_cut;
-            //current_torev_display.Text = current;
-            //stack_torev_display.Text = stack_txt;
-            //poland_display.Text = rev_po_txt;
-            // 一定時間ごとに繰り返したい処理を表すデリケート
-            //TimerCallback = tc = 
-            // 実際には非同期処理で使用するパラメータを持つオブジェクトを返す
-            //    object state = new object();
-            // 0秒後に開始、3秒ごとに処理を繰り返す　が、直後でDisposeでタイマーを破棄する
-            //    timer = new System.Threading.Timer(new TimerCallback(RefreshDisplay), state, 0, 3000);
-            //    Thread.Sleep(1000/freq);
-            //    Console.WriteLine(".");
-            //    timer.Dispose();
-            /**
-             * ------------------------------
-             */
-
-            int counter = 0;
-            int n = 5;
-            DispatcherTimer timer = new DispatcherTimer();
-            timer.Interval = TimeSpan.FromMilliseconds(1000 / freq);
-            timer.Tick += (sender, e) =>
-            {
-                // UI 更新処理
-                Console.WriteLine("タイマーの中 counter: " + counter);
-
-                counter++;
-                if (counter >= n)
-                {
-                    timer.Stop();
-                }
-            };
-            timer.Start();
         }
 
-        /**
-        * ------------------------------
-        */
-        //static private void RefreshDisplay(object state)
-        //{
-        //    counter++;
-        //    Console.WriteLine(counter);
-            // 指定回数繰り返したらタイマーを破棄
-            //if (n <= counter)
-              //  timer.Dispose();
-        //}
-        /**
-        * ------------------------------
-        */
+
 
 
 
